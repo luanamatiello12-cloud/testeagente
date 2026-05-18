@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roteirista AI - Orcamento</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ORCAMENTO DE VIDEO</h1>
+            <p>Crie orcamentos profissionais para seus clientes</p>
+            <nav class="nav-tabs">
+                <a href="/">Roteiro</a>
+                <a href="/orcamento" class="active">Orcamento</a>
+            </nav>
+        </header>
+
+        <form id="formOrcamento">
+            <div class="secao-form">
+                <h3 class="secao-titulo-form">Dados do Prestador</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Nome / Nome Artistico</label>
+                        <input type="text" name="prestador_nome" placeholder="Seu nome ou marca" required>
+                    </div>
+                    <div class="form-group">
+                        <label>CNPJ (opcional)</label>
+                        <input type="text" name="prestador_cnpj" placeholder="00.000.000/0000-00">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>E-mail</label>
+                        <input type="email" name="prestador_email" placeholder="contato@seudominio.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="text" name="prestador_telefone" placeholder="(49) 99999-9999">
+                    </div>
+                </div>
+            </div>
+
+            <div class="secao-form">
+                <h3 class="secao-titulo-form">Dados do Cliente</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Nome / Empresa</label>
+                        <input type="text" name="cliente_nome" placeholder="Nome do cliente" required>
+                    </div>
+                    <div class="form-group">
+                        <label>E-mail</label>
+                        <input type="email" name="cliente_email" placeholder="cliente@email.com">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="text" name="cliente_telefone" placeholder="(49) 99999-9999">
+                    </div>
+                    <div class="form-group">
+                        <label>Empresa (opcional)</label>
+                        <input type="text" name="cliente_empresa" placeholder="Razao social">
+                    </div>
+                </div>
+            </div>
+
+            <div class="secao-form">
+                <h3 class="secao-titulo-form">Projeto</h3>
+                <div class="form-group">
+                    <label>Titulo do Projeto</label>
+                    <input type="text" name="projeto_titulo" placeholder="Ex: Video Institucional Empresa XYZ" required>
+                </div>
+                <div class="form-group">
+                    <label>Descricao do Projeto</label>
+                    <textarea name="projeto_descricao" rows="3" placeholder="Resumo do que sera produzido..."></textarea>
+                </div>
+            </div>
+
+            <div class="secao-form">
+                <h3 class="secao-titulo-form">Itens e Servicos</h3>
+                <div id="itensContainer">
+                    <div class="item-row grid-4">
+                        <div class="form-group">
+                            <label>Descricao</label>
+                            <input type="text" name="item_desc[]" placeholder="Ex: Edicao de video" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Qtd</label>
+                            <input type="number" name="item_qtd[]" value="1" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Valor Unit. (R$)</label>
+                            <input type="number" name="item_unit[]" value="0" min="0" step="0.01" required onchange="calcularTotal()">
+                        </div>
+                        <div class="form-group">
+                            <label>Total (R$)</label>
+                            <input type="text" class="item-total" value="R$ 0,00" readonly tabindex="-1">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn-secundario" onclick="adicionarItem()">+ Adicionar Item</button>
+                <button type="button" class="btn-secundario btn-remover" onclick="removerUltimoItem()">- Remover Ultimo</button>
+
+                <div class="resumo-total">
+                    <span class="resumo-label">TOTAL DO ORCAMENTO:</span>
+                    <span class="resumo-valor" id="totalGeral">R$ 0,00</span>
+                </div>
+            </div>
+
+            <div class="secao-form">
+                <h3 class="secao-titulo-form">Condicoes</h3>
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label>Prazo de Execucao</label>
+                        <input type="text" name="prazo" value="15 dias uteis">
+                    </div>
+                    <div class="form-group">
+                        <label>Formato de Entrega</label>
+                        <input type="text" name="formato_entrega" value="Arquivo digital (MP4) em alta resolucao">
+                    </div>
+                    <div class="form-group">
+                        <label>Validade do Orcamento</label>
+                        <input type="text" name="validade" value="15 dias">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Condicoes de Pagamento</label>
+                    <textarea name="condicoes_pagamento" rows="2">50% na aprovacao do orcamento, 50% na entrega final.</textarea>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-gerar" id="btnGerar">
+                <span class="btn-text">GERAR ORCAMENTO EM PDF</span>
+                <span class="btn-loader hidden">Gerando...</span>
+            </button>
+        </form>
+
+        <div id="resultado" class="resultado hidden">
+            <div class="status-box">
+                <h3>Status</h3>
+                <div id="statusText">Processando...</div>
+            </div>
+            <div id="downloadBox" class="download-box hidden">
+                <a id="downloadLink" href="#" class="btn-download">BAIXAR ORCAMENTO PDF</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function adicionarItem() {
+            const container = document.getElementById('itensContainer');
+            const row = document.createElement('div');
+            row.className = 'item-row grid-4';
+            row.innerHTML = `
+                <div class="form-group">
+                    <label>Descricao</label>
+                    <input type="text" name="item_desc[]" placeholder="Ex: Captacao de audio" required>
+                </div>
+                <div class="form-group">
+                    <label>Qtd</label>
+                    <input type="number" name="item_qtd[]" value="1" min="1" required onchange="calcularTotal()">
+                </div>
+                <div class="form-group">
+                    <label>Valor Unit. (R$)</label>
+                    <input type="number" name="item_unit[]" value="0" min="0" step="0.01" required onchange="calcularTotal()">
+                </div>
+                <div class="form-group">
+                    <label>Total (R$)</label>
+                    <input type="text" class="item-total" value="R$ 0,00" readonly tabindex="-1">
+                </div>
+            `;
+            container.appendChild(row);
+        }
+
+        function removerUltimoItem() {
+            const container = document.getElementById('itensContainer');
+            if (container.children.length > 1) {
+                container.removeChild(container.lastElementChild);
+                calcularTotal();
+            }
+        }
+
+        function calcularTotal() {
+            const qtds = document.querySelectorAll('input[name="item_qtd[]"]');
+            const units = document.querySelectorAll('input[name="item_unit[]"]');
+            const totals = document.querySelectorAll('.item-total');
+            let geral = 0;
+
+            for (let i = 0; i < qtds.length; i++) {
+                const q = parseFloat(qtds[i].value) || 0;
+                const u = parseFloat(units[i].value) || 0;
+                const t = q * u;
+                geral += t;
+                totals[i].value = 'R$ ' + t.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+
+            document.getElementById('totalGeral').textContent = 'R$ ' + geral.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        document.getElementById('itensContainer').addEventListener('input', calcularTotal);
+
+        const form = document.getElementById('formOrcamento');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            document.getElementById('btnGerar').disabled = true;
+            document.getElementById('resultado').classList.remove('hidden');
+            document.getElementById('downloadBox').classList.add('hidden');
+            document.getElementById('statusText').textContent = 'Gerando PDF...';
+
+            const formData = new FormData(form);
+            const resp = await fetch('/gerar_orcamento', { method: 'POST', body: formData });
+            const data = await resp.json();
+
+            if (data.ok) {
+                document.getElementById('statusText').textContent = 'Pronto!';
+                document.getElementById('downloadLink').href = data.download_url;
+                document.getElementById('downloadBox').classList.remove('hidden');
+            } else {
+                document.getElementById('statusText').textContent = 'Erro: ' + data.erro;
+            }
+            document.getElementById('btnGerar').disabled = false;
+        });
+    </script>
+</body>
+</html>

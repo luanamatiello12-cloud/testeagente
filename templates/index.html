@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roteirista AI - Criador de Roteiros</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ROTEIRISTA AI</h1>
+            <p>Crie roteiros profissionais para videos e exporte em PDF</p>
+            <nav class="nav-tabs">
+                <a href="/" class="active">Roteiro</a>
+                <a href="/orcamento">Orcamento</a>
+            </nav>
+        </header>
+
+        <form id="formRoteiro">
+            <div class="grid-2">
+                <div class="form-group">
+                    <label for="tipo">Tipo de Roteiro</label>
+                    <select id="tipo" name="tipo" required>
+                        {% for id, info in tipos.items() %}
+                        <option value="{{ id }}">{{ info.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="titulo">Titulo do Video</label>
+                    <input type="text" id="titulo" name="titulo" placeholder="Ex: Como fazer Strogonoff" required>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label for="tema">Tema / Assunto</label>
+                    <input type="text" id="tema" name="tema" placeholder="O que o video trata?" required>
+                </div>
+                <div class="form-group">
+                    <label for="publico">Publico-alvo</label>
+                    <input type="text" id="publico" name="publico" placeholder="Ex: jovens 18-25, iniciantes" value="geral">
+                </div>
+            </div>
+
+            <div class="grid-3">
+                <div class="form-group">
+                    <label for="tom">Tom de Voz</label>
+                    <select id="tom" name="tom">
+                        <option value="conversacional" selected>Conversacional</option>
+                        <option value="formal">Formal</option>
+                        <option value="engracado">Engracado/Humor</option>
+                        <option value="motivacional">Motivacional</option>
+                        <option value="tecnico">Tecnico</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="plataforma">Plataforma</label>
+                    <select id="plataforma" name="plataforma">
+                        <option value="YouTube" selected>YouTube</option>
+                        <option value="TikTok">TikTok</option>
+                        <option value="Instagram Reels">Instagram Reels</option>
+                        <option value="Kwai">Kwai</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="duracao">Duracao Estimada</label>
+                    <select id="duracao" name="duracao">
+                        <option value="Ate 1 minuto">Ate 1 minuto</option>
+                        <option value="1-3 minutos">1-3 minutos</option>
+                        <option value="3-5 minutos" selected>3-5 minutos</option>
+                        <option value="5-10 minutos">5-10 minutos</option>
+                        <option value="Mais de 10 minutos">Mais de 10 minutos</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="ia-section">
+                <label class="toggle-label">
+                    <input type="checkbox" id="usar_ia" name="usar_ia">
+                    <span class="toggle-switch"></span>
+                    <span class="toggle-text">Usar Inteligencia Artificial (gera texto automaticamente)</span>
+                </label>
+
+                <div id="apiKeyBox" class="api-key-box hidden">
+                    <div class="form-group">
+                        <label for="api_key">Chave de API (OpenAI ou Groq)</label>
+                        <input type="password" id="api_key" name="api_key" placeholder="sk-... ou gsk-...">
+                        <small>Seu cartao nao e cobrado sem uso. Groq tem creditos gratis mensais.</small>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-gerar" id="btnGerar">
+                <span class="btn-text">GERAR ROTEIRO EM PDF</span>
+                <span class="btn-loader hidden">Gerando...</span>
+            </button>
+        </form>
+
+        <div id="resultado" class="resultado hidden">
+            <div class="status-box">
+                <h3>Status da Geracao</h3>
+                <div id="statusText">Aguardando...</div>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+            </div>
+            <div class="log-box">
+                <h4>Log</h4>
+                <pre id="logOutput"></pre>
+            </div>
+            <div id="downloadBox" class="download-box hidden">
+                <a id="downloadLink" href="#" class="btn-download">BAIXAR PDF</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const usarIaCheckbox = document.getElementById('usar_ia');
+        const apiKeyBox = document.getElementById('apiKeyBox');
+        usarIaCheckbox.addEventListener('change', () => {
+            apiKeyBox.classList.toggle('hidden', !usarIaCheckbox.checked);
+        });
+
+        const form = document.getElementById('formRoteiro');
+        const btnGerar = document.getElementById('btnGerar');
+        const btnText = btnGerar.querySelector('.btn-text');
+        const btnLoader = btnGerar.querySelector('.btn-loader');
+        const resultado = document.getElementById('resultado');
+        const statusText = document.getElementById('statusText');
+        const progressFill = document.getElementById('progressFill');
+        const logOutput = document.getElementById('logOutput');
+        const downloadBox = document.getElementById('downloadBox');
+        const downloadLink = document.getElementById('downloadLink');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            btnGerar.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+            resultado.classList.remove('hidden');
+            downloadBox.classList.add('hidden');
+            logOutput.textContent = '';
+            progressFill.style.width = '10%';
+
+            const formData = new FormData(form);
+            const resp = await fetch('/gerar', { method: 'POST', body: formData });
+            const data = await resp.json();
+            const jobId = data.job_id;
+
+            const poll = setInterval(async () => {
+                const r = await fetch(`/status/${jobId}`);
+                const j = await r.json();
+
+                statusText.textContent = j.status.toUpperCase();
+                logOutput.textContent = j.log.join('\n');
+                logOutput.scrollTop = logOutput.scrollHeight;
+
+                if (j.status === 'gerando') progressFill.style.width = '60%';
+                if (j.status === 'pronto') progressFill.style.width = '100%';
+                if (j.status === 'erro') progressFill.style.width = '100%';
+
+                if (j.status === 'pronto' || j.status === 'erro') {
+                    clearInterval(poll);
+                    btnGerar.disabled = false;
+                    btnText.classList.remove('hidden');
+                    btnLoader.classList.add('hidden');
+
+                    if (j.status === 'pronto') {
+                        downloadLink.href = `/download/${jobId}`;
+                        downloadBox.classList.remove('hidden');
+                    }
+                }
+            }, 1500);
+        });
+    </script>
+</body>
+</html>
